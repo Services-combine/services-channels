@@ -1,0 +1,12 @@
+[Unit]
+Description=services inviting
+
+[Service]
+User=q
+Type=simple
+WorkingDirectory=/home/q/services/services-channels
+ExecStart=/usr/bin/python3 /home/q/services/services-channels/main.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
