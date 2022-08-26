@@ -1,4 +1,3 @@
-import os
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -12,7 +11,13 @@ SCOPES = [
 
 def get_service_creds(user_token, service = 'youtube', version = 'v3'):
     creds = Credentials.from_authorized_user_file(user_token, SCOPES)
-    creds.refresh(Request())
+
+    if not creds.valid:
+        creds.refresh(Request())
+
+        with open(user_token, 'w') as token:
+            token.write(creds.to_json())
+
     service = build(service, version, credentials=creds)
     return service
 
