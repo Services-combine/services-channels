@@ -17,7 +17,7 @@ class AutomaticYoutube:
             logger.error(error)
 
 
-    def get_uploads_playlist_id_proxy(self, channel_id, api_key):
+    def get_uploads_playlist_id_proxy(self, channel_id, api_key, proxies):
         try:
             url = 'https://youtube.googleapis.com/youtube/v3/channels'
             params = {
@@ -28,8 +28,11 @@ class AutomaticYoutube:
             headers={
                 "Accept": "application/json"
             }
-
-            response = requests.get(url, params=params, headers=headers).json()
+            
+            if (proxies):
+                response = requests.get(url, params=params, headers=headers, proxies=proxies).json()
+            else:
+                response = requests.get(url, params=params, headers=headers).json()
 
             if response.get('error'):
                 logger.error(f"channel_id: {channel_id}: {response['error']['message']}")
@@ -44,10 +47,10 @@ class AutomaticYoutube:
             return None
 
 
-    def get_videos_channel_proxy(self, channel_id, api_key, count_videos, access_token):
+    def get_videos_channel_proxy(self, channel_id, api_key, count_videos, access_token, proxies):
         try:
             videos = []
-            uploads_playlist_id = self.get_uploads_playlist_id_proxy(channel_id, api_key)
+            uploads_playlist_id = self.get_uploads_playlist_id_proxy(channel_id, api_key, proxies)
             if uploads_playlist_id == None:
                 return []
 
@@ -64,7 +67,10 @@ class AutomaticYoutube:
             }
 
             for _ in range(ceil(count_videos / maxResults)):
-                response = requests.get(url, params=params, headers=headers).json()
+                if proxies:
+                    response = requests.get(url, params=params, headers=headers, proxies=proxies).json()
+                else:
+                    response = requests.get(url, params=params, headers=headers).json()
 
                 if response.get('error'):
                     logger.error(f"channel_id: {channel_id}: {response['error']['message']}")
@@ -89,14 +95,23 @@ class AutomaticYoutube:
             api_key = channel['apikey']
             count_videos = channel['countcommentedvideos']
             comment = channel['comment']
-            #user_token = f'{FOLDER_CHANNELS}user_token_{channel_id}.json'
-            user_token = 'user_token.json'
+            user_token = f'{FOLDER_CHANNELS}user_token_{channel_id}.json'
 
+            proxies = None
+
+            if channel['proxy'] != "":
+                proxy = channel['proxy'].split(":")
+                proxy_url = f'{proxy[2]}:{proxy[3]}@{proxy[0]}:{proxy[1]}'
+                proxies = {
+                    "http": f"http://{proxy_url}",
+                    "https": f"https://{proxy_url}"
+                }
+                
             service = get_service_creds(user_token, 'youtube', 'v3')
             with open(user_token, 'r') as file:
                 user_token_data = json.load(file)
 
-            videos = self.get_videos_channel_proxy(channel_id, api_key, count_videos, user_token_data['token'])
+            videos = self.get_videos_channel_proxy(channel_id, api_key, count_videos, user_token_data['token'], proxies)
             videos = videos[:count_videos]
 
             url = 'https://youtube.googleapis.com/youtube/v3/commentThreads'
@@ -128,7 +143,11 @@ class AutomaticYoutube:
                     ).to_json()
 
                     request_json = json.loads(request)
-                    response = requests.post(url, params=params, headers=headers, data=request_json['body']).json()
+
+                    if proxies:
+                        response = requests.post(url, params=params, headers=headers, data=request_json['body'], proxies=proxies).json()
+                    else:
+                        response = requests.post(url, params=params, headers=headers, data=request_json['body']).json()
 
                     if response.get('error'):
                         logger.error(f"video_id: {videoId} channel_id: {channel_id}: {response['error']['message']}")
@@ -136,7 +155,7 @@ class AutomaticYoutube:
                         logger.info(f'Commented is success video_id: {videoId} channel_id: {channel_id}')
 
                     if videoId != videos[-1]:
-                        time.sleep(15)
+                        time.sleep(40)
 
                 except Exception as error:
                     logger.error(error)
