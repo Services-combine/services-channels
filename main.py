@@ -25,7 +25,7 @@ class AutomaticYoutube:
                 'id': channel_id,
                 'key': api_key
             }
-            headers={
+            headers = {
                 "Accept": "application/json"
             }
             
